@@ -56,15 +56,6 @@ func LoadCommutatorsFromFile(path string) {
 	}
 }
 
-func DisplayComms() {
-	for k, v := range Comms {
-		fmt.Println(k + ":")
-		for _, cl := range v.Clients {
-			fmt.Printf("    -%v\n", cl)
-		}
-	}
-}
-
 func GetCommutatorsToString() string {
 	var res string
 	for _, el := range Comms {

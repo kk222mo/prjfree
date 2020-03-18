@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net"
 	"prjfree/client/crypt"
+	sqlm "prjfree/client/data"
 	"prjfree/client/models"
 	"regexp"
 	"strconv"
@@ -146,7 +147,6 @@ func getRand(a int, b int) int {
 	if b-a == 0 {
 		return a
 	}
-	fmt.Println(b - a)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	return r.Intn(b-a) + a
 }
@@ -159,28 +159,106 @@ func getRandSession() Session {
 		if i == rndnum {
 			return v
 		}
+		i++
 	}
 	return Session{}
 }
 
+func getPossibleSessionCount() int {
+	res := 0
+	for _, comm := range models.Comms {
+		for _, _ = range comm.Clients {
+			res++
+		}
+	}
+	return res
+}
+
+func genRange(min, max int) []int {
+	res := make([]int, max-min+1)
+	for i := range res {
+		res[i] = min + i
+	}
+	return res
+}
+
+func getAllClients() []Client {
+	res := make([]Client, 0)
+	j := 0
+	for _, comm := range models.Comms {
+		for _, cl := range comm.Clients {
+			res = append(res, Client{
+				M:        comm,
+				Cl:       cl,
+				conn_num: j,
+			})
+		}
+		j++
+	}
+	return res
+}
+
+func remove(a []int, ind int) []int {
+	a[ind], a[len(a)-1] = a[len(a)-1], a[ind]
+	return a[:len(a)-1]
+}
+
+func StartExchange() {
+	SetInterval(func() { Exchange() }, 20000, true)
+}
+
+func FormData(sqlb SQLBlock) models.Block {
+	var res models.Block
+	res.Data = []byte(sqlb.Hash + ";" + sqlb.Topic + "::" + string(sqlb.Data) + ";" + strconv.Itoa(sqlb.Num) + ";" + sqlb.Date)
+	return res
+}
+
+func Exchange() {
+	res, err := sqlm.DB.Query("SELECT * FROM blocks ORDER BY RANDOM() LIMIT 1;")
+	defer res.Close()
+	if err != nil {
+		fmt.Printf("Error during find(%v)\n", err.Error())
+	} else {
+
+		for res.Next() {
+			b := SQLBlock{}
+			err := res.Scan(&b.Id, &b.Hash, &b.Date, &b.Num, &b.Topic, &b.Data)
+			if err != nil {
+				fmt.Printf("Error during sql query: %v\n", err.Error())
+			} else {
+				block := FormData(b)
+				AddTask(block)
+			}
+		}
+	}
+}
+
+func DisplayComms() {
+	for k, v := range models.Comms {
+		fmt.Println(k + ":")
+		for _, cl := range v.Clients {
+			fmt.Printf("    -%v ", cl)
+			_, ok := Sessions[cl]
+			if ok {
+				fmt.Printf("[SESSION]\n")
+			} else {
+				fmt.Printf("\n")
+			}
+		}
+	}
+}
+
 func GenSessions(count int) {
-	generated := make(map[int]bool, 0)
+	all_clients := getAllClients()
+	conn_range := genRange(0, len(all_clients)-1)
 	for i := 0; i < count; i++ {
-		if len(generated) == len(Conns) {
+		if len(conn_range) == 0 {
 			break
 		}
-		num := getRand(0, len(Conns))
-		_, ok := generated[num]
-		for ok {
-			num := getRand(0, len(Conns))
-			_, ok = generated[num]
-		}
-		generated[num] = true
-		cnn := Conns[num]
-		fmt.Printf("Conns length: %v\n", len(Conns))
-		cmm := models.Comms[cnn.RemoteAddr().String()]
-		client := cmm.Clients[getRand(0, len(cmm.Clients))]
-		StartSession(cnn, client)
+		num := getRand(0, len(conn_range))
+		ind := conn_range[num]
+		conn_range = remove(conn_range, num)
+		StartSession(Conns[all_clients[ind].conn_num], all_clients[ind].Cl)
 	}
 }
 
@@ -191,10 +269,6 @@ func StartSession(conn *Conn, client string) {
 	message += "\n"
 	fmt.Printf("Message: %v", message)
 	SendMessage(conn, message)
-}
-
-func getRandClient(comm models.Commutator) string {
-	return comm.Clients[getRand(0, len(comm.Clients)-1)]
 }
 
 func Unspace(s string) string {

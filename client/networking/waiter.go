@@ -11,9 +11,10 @@ import (
 )
 
 type Client struct {
-	M       models.Commutator
-	Cl      string
-	From_ip string
+	M        models.Commutator
+	Cl       string
+	conn_num int
+	From_ip  string
 }
 
 type SQLBlock struct {

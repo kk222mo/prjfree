@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	enc "prjfree/client/crypt"
 	"prjfree/client/data"
@@ -20,11 +21,12 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 	networking.StartTasks()
 	for {
+		fmt.Printf("Command: ")
 		text, _ := reader.ReadString('\n')
 		text = strings.TrimSuffix(text, "\n")
 		pars := strings.Split(text, ";")
 		if text == "INFO" {
-			models.DisplayComms()
+			networking.DisplayComms()
 		} else if pars[0] == "SESSIONS" {
 			networking.GenSessions(models.CONN_COUNT)
 		} else if pars[0] == "PLAINENC" {
@@ -34,6 +36,9 @@ func main() {
 		} else if pars[0] == "FIND" {
 			topic := pars[1]
 			networking.Find(topic)
+		} else if pars[0] == "EXCHANGE" {
+			fmt.Println("Starting exchange...")
+			networking.StartExchange()
 		}
 	}
 }
