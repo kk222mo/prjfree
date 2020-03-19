@@ -8,6 +8,7 @@ import (
 	"prjfree/client/data"
 	"prjfree/client/models"
 	"prjfree/client/networking"
+	"prjfree/client/webgui"
 	"strings"
 )
 
@@ -27,6 +28,7 @@ func main() {
 		pars := strings.Split(text, ";")
 		if text == "INFO" {
 			networking.DisplayComms()
+			fmt.Println(webgui.GetClients())
 		} else if pars[0] == "SESSIONS" {
 			networking.GenSessions(models.CONN_COUNT)
 		} else if pars[0] == "PLAINENC" {
@@ -39,6 +41,12 @@ func main() {
 		} else if pars[0] == "EXCHANGE" {
 			fmt.Println("Starting exchange...")
 			networking.StartExchange()
+		} else if pars[0] == "GUI" {
+			webgui.StartListening()
+			err := webgui.OpenBrowser()
+			if err != nil {
+				fmt.Println(err.Error())
+			}
 		}
 	}
 }

@@ -204,6 +204,7 @@ func remove(a []int, ind int) []int {
 }
 
 func StartExchange() {
+	fmt.Println("Starting exchange...")
 	SetInterval(func() { Exchange() }, 20000, true)
 }
 
@@ -267,7 +268,7 @@ func StartSession(conn *Conn, client string) {
 	message += crypt.NormalizeText(string(crypt.PublicKeyToBytes(crypt.PublicKey)))
 	message += ";"
 	message += "\n"
-	fmt.Printf("Message: %v", message)
+	fmt.Printf("Message: %v\n%v", message, conn)
 	SendMessage(conn, message)
 }
 

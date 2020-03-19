@@ -7,6 +7,7 @@ import (
 	"prjfree/client/crypt"
 	sqlm "prjfree/client/data"
 	"prjfree/client/models"
+	"sort"
 	"strings"
 )
 
@@ -27,6 +28,15 @@ type SQLBlock struct {
 }
 
 var clientqueue []Client
+
+func contains(a []string, b string) bool {
+	for _, v := range a {
+		if v == b {
+			return true
+		}
+	}
+	return false
+}
 
 func AddClient() {
 	if len(clientqueue) > 0 {
@@ -56,6 +66,8 @@ func WaitForMessages(conn *Conn) {
 			from_ip := resp[1]
 			clients := strings.Split(resp[2], ",")
 			m, ok := models.Comms[from_ip]
+			newclients := make([]Client, 0)
+			newclients_s := make([]string, 0)
 			if ok {
 				for _, client := range clients {
 					if client != "" {
@@ -64,9 +76,34 @@ func WaitForMessages(conn *Conn) {
 							From_ip: from_ip,
 							Cl:      client,
 						}
-						clientqueue = append(clientqueue, cl)
+						newclients = append(newclients, cl)
+						newclients_s = append(newclients_s, client)
 					}
 				}
+				inds_to_delete := make([]int, 0)
+				for ind, cl := range models.Comms[conn.RemoteAddr().String()].Clients {
+					if !contains(newclients_s, cl) {
+						delete(Sessions, cl)
+						inds_to_delete = append(inds_to_delete, -ind)
+					}
+				}
+				sort.Ints(inds_to_delete)
+				for j, ind := range inds_to_delete {
+					ind = -ind
+					ln := len(models.Comms[conn.RemoteAddr().String()].Clients)
+					addr := conn.RemoteAddr().String()
+					cm := models.Comms[addr]
+					copy(cm.Clients[ind:], cm.Clients[ind+1:])
+					cm.Clients[ln-1] = ""
+					cm.Clients = cm.Clients[:ln-1]
+					models.Comms[addr] = cm
+					inds_to_delete[j], inds_to_delete[len(inds_to_delete)-1] = inds_to_delete[len(inds_to_delete)-1], inds_to_delete[j]
+					inds_to_delete = inds_to_delete[:len(inds_to_delete)-1]
+				}
+				for _, cl := range newclients {
+					clientqueue = append(clientqueue, cl)
+				}
+
 			}
 		} else if len(resp) >= 2 && resp[0] == "[DISCOVERRESULT]" {
 			commutators := strings.Split(resp[1], ",")

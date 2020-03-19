@@ -7,6 +7,7 @@ const TASK_TIME = 5000
 
 const KEY_LEN = 2048 // RSA Key Length
 const CONN_COUNT = 5 // Sessions count
+const GUI_PORT = "5556"
 
 /*
   Protocol description:
